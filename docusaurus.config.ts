@@ -14,8 +14,10 @@ const config: Config = {
     v4: true, // Improve compatibility with the upcoming Docusaurus v4
   },
 
-  url: 'https://openjscad.xyz',
-  baseUrl: '/',
+  // Where the site is published today. If it ever moves to its own domain,
+  // this is the pair to change - baseUrl must match the path it is served from.
+  url: 'https://receter.github.io',
+  baseUrl: '/jscad-docs/',
 
   organizationName: 'jscad',
   projectName: 'OpenJSCAD.org',
