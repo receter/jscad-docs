@@ -59,11 +59,12 @@ export const main = () => {
 }
 ```
 
-:::info[Changed in v3]
+:::warning[Watch the spelling]
 
-`path2.fromPoints()` takes `closed`, not `close`. A misspelt option is silently
-ignored, leaving the path open — worth checking first if an extrusion comes out
-hollow.
+The option is `closed`, not `close`. The v2 user guide showed `close` in several
+places, and it never worked in either version — an unknown option is silently
+ignored, so the path stays open and the mistake only surfaces later as a hollow
+extrusion.
 
 :::
 
@@ -242,8 +243,6 @@ Two things moved:
 
   v3 returns `paths` already built. Delete the conversion step.
 
-Note also that the default `height` is now `14`, not `21`.
-
 :::
 
 ### Text strings
@@ -283,6 +282,10 @@ flat array of segments. The two-step `flatMap` above is the replacement for v2's
 
 The `input` option is also gone: `vectorText({ input: 'JSCAD' })` throws. Pass the
 text as the second argument.
+
+`letterSpacing` changed default from `1` to `0`, so v2 text comes out tighter unless
+you pass it explicitly. `height` and `lineSpacing` are unchanged at `14` and `30/14`
+— the v2 guide listed those as `21` and `1.4`, which never matched the library.
 
 Keeping the line and character structure is what makes per-line and per-character
 work — measuring, colouring, spacing — possible without re-parsing.

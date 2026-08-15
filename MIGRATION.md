@@ -4,7 +4,7 @@ Tracks the migration of the English JSCAD v2 userguide
 (`CONTEXT/userguide-backup-master/pages/en/`, DokuWiki source) into this Docusaurus
 site, rewritten for JSCAD v3.
 
-Last updated: 2026-08-15 (batch 3)
+Last updated: 2026-08-15 (batch 4)
 
 ## Where things stand
 
@@ -68,14 +68,25 @@ The eight Quick Reference pages were collapsed into one cheat sheet, and the Mat
 Guide's three into one page — including `math_guide_orientation`, which is no longer
 half-migrated.
 
+## Batch 4 — shipped
+
+New material, with no v2 source to migrate.
+
+| Site page | Covers |
+| --- | --- |
+| [docs/design-guide/curves-and-slices.md](docs/design-guide/curves-and-slices.md) | Bézier curves, slices, `extrudeFromSlices()`, `path3` |
+| [docs/migrating-from-v2.md](docs/migrating-from-v2.md) | Every v2 → v3 change in one reference |
+
 ## Outstanding
 
 ### The website page — 1 page, 109 lines
 
 `user_guide_website` walks through the v2 web application screen by screen. v3 ships
-a different UI, migrated from jscadui, so none of that content carries over. This is
-authoring work against the running application — including fresh screenshots — not a
-migration, and it should be written by someone who has the v3 UI in front of them.
+a different UI, migrated from jscadui, so none of that content carries over.
+
+**Deferred by decision** — not needed for now. When it is wanted, it is authoring work
+against the running application, including fresh screenshots, and wants someone who
+has the v3 UI in front of them.
 
 ## Not migrating
 
@@ -84,33 +95,33 @@ migration, and it should be written by someone who has the v3 UI in front of the
 
 ## New v3 material with no v2 source
 
-90 of the 96 flat functions exported by `@jscad/modeling` now appear in the docs. The
-six that do not are all low-level helpers with no v2 source and little standalone
-value in a user guide: `aboutEqualNormals`, `hueToColorComponent`,
-`interpolateBetween2DPointsForY`, `solve2Linear`, and `hullPoints2` / `hullPoints3`.
-They are covered by the generated API reference.
+90 of the 96 flat functions exported by `@jscad/modeling` appear in the docs. The six
+that do not are low-level helpers with no v2 source and little standalone value in a
+user guide — `aboutEqualNormals`, `hueToColorComponent`,
+`interpolateBetween2DPointsForY`, `solve2Linear`, `hullPoints2` and `hullPoints3`.
+**Deferred by decision:** the generated API reference covers them.
 
-Bigger gaps, none of which the v2 guide covered either, so they are new work rather
-than migration:
+`path3`, the `curves` module and `bezier` are now documented in
+[Curves and Slices](docs/design-guide/curves-and-slices.md).
 
-- **`path3`** — 3D paths, new in v3 and undocumented here.
-- **Curves** — the `curves` module and `bezier`.
-- **Connectors** — geometry carrying a plane and a perpendicular vector.
+**Connectors cannot be documented.** The source ships in the package but the module is
+not exported from `@jscad/modeling`, so there is nothing a design can call.
 
 A "Migrating from v2" page is planned but not written. Until it exists, v2 differences
 are called out inline with `:::info[Changed in v3]` admonitions.
 
 ## What is left
 
-The migration itself is done bar the website page. What remains is new material:
+Nothing outstanding by decision. Remaining optional work:
 
-1. **The website page** — needs the v3 UI in front of you, plus screenshots.
-2. **A "Migrating from v2" page** — the inline `:::info[Changed in v3]` notes are
-   scattered across seventeen pages; collecting them into one reference would serve
-   the large existing v2 audience.
-3. **path3, curves and connectors** — v3 features the v2 guide never covered.
-4. **Link rot** — four links in `user_guide_help` were dead and were dropped (see
+1. **The website page** — deferred; needs the v3 UI and screenshots.
+2. **Link rot** — four links in `user_guide_help` were dead and were dropped (see
    below). The rest are worth re-checking periodically.
+3. **Upstream bugs found while writing** — worth reporting against the V3 branch:
+   `orbitControls.zoom()` discards the magnitude of its delta so zooming in is a
+   no-op; `zoomToFit()` throws on entities without geometry; the renderer's draw-command
+   cache never hits for its first entity; `slice.fromGeom2` is used by repository
+   examples but does not exist; `path3` operations silently no-op.
 
 ### Links dropped from More Designs
 

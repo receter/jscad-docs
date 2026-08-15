@@ -113,7 +113,8 @@ line, each holding `chars`. See [Text](./design-guide/paths-and-text.md#text).
 *Note: the single-axis rotations take the angle first — `rotateX(angle, shape)`.
 Angles are always in radians.*
 
-*Note: `center()` positions relative to `relativeTo`. v2 called that option `center`.*
+*Note: `center()` positions relative to `relativeTo`. The v2 user guide called that
+option `center`, which never worked in either version.*
 
 ## [Operations](./design-guide/operations.md)
 

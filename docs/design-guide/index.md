@@ -44,6 +44,7 @@ export const main = () => {
 | [Transforms](./transforms.md) | Moving, rotating, scaling and aligning shapes |
 | [Operations](./operations.md) | Combining shapes with booleans and hulls |
 | [Extrusions](./extrusions.md) | Turning 2D shapes into 3D ones |
+| [Curves and Slices](./curves-and-slices.md) | Bézier curves and slice-by-slice extrusion |
 | [Offsets](./offsets.md) | Growing and shrinking shapes by a fixed distance |
 | [Colors](./colors.md) | Applying color, and converting between color spaces |
 | [Measurements](./measurements.md) | Asking a shape about its size and position |
