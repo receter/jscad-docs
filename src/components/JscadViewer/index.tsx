@@ -59,15 +59,24 @@ type CanvasProps = {
 function Canvas({code, height}: CanvasProps): ReactNode {
   const {colorMode} = useColorMode();
   const containerRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const hostRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<ViewerHandle | null>(null);
   const stateRef = useRef(createViewerState());
   /** The most recent successful evaluation, replayed whenever the context is recreated. */
   const modelRef = useRef<{geometries: object[]; bounds: number[][]} | null>(null);
 
-  const [error, setError] = useState<string | null>(null);
+  // Kept apart because they heal differently: a design that does not compile stays broken
+  // until its source changes, while a failed context is fixed by the next one that works.
+  // Sharing one slot would mean either a stale error over a working view, or a blank view
+  // where the reader's actual mistake should be.
+  const [designError, setDesignError] = useState<string | null>(null);
+  const [viewerError, setViewerError] = useState<string | null>(null);
+  const error = designError ?? viewerError;
+
   const [visible, setVisible] = useState(false);
   const [engaged, setEngaged] = useState(false);
+  /** Bumped to force a rebuild after the browser takes the WebGL context away. */
+  const [generation, setGeneration] = useState(0);
 
   // Only hold a WebGL context while the viewer is near the viewport.
   useEffect(() => {
@@ -82,39 +91,43 @@ function Canvas({code, height}: CanvasProps): ReactNode {
     return () => observer.disconnect();
   }, []);
 
-  // Create and tear down the viewer as visibility and theme change.
+  // Create and tear down the viewer as visibility and theme change. Each run builds a
+  // brand new canvas inside the host, because a disposed viewer leaves a permanently lost
+  // context behind on the one it was using.
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!visible || !canvas) return;
+    const host = hostRef.current;
+    if (!visible || !host) return;
 
     let viewer: ViewerHandle;
     try {
-      viewer = createViewer(
-        canvas,
-        stateRef.current,
-        THEMES[colorMode],
-      ) as ViewerHandle;
+      viewer = createViewer(host, stateRef.current, THEMES[colorMode], {
+        onContextLost: () => setGeneration((n) => n + 1),
+        onError: setViewerError,
+      }) as ViewerHandle;
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setViewerError(cause instanceof Error ? cause.message : String(cause));
       return;
     }
     viewerRef.current = viewer;
+    setViewerError(null);
     viewer.resize();
 
     const model = modelRef.current;
     if (model) viewer.setGeometries(model.geometries, model.bounds);
 
     const resizeObserver = new ResizeObserver(() => viewer.resize());
-    resizeObserver.observe(canvas);
+    resizeObserver.observe(host);
 
     return () => {
       resizeObserver.disconnect();
       viewer.dispose();
       viewerRef.current = null;
     };
-  }, [visible, colorMode]);
+  }, [visible, colorMode, generation]);
 
-  // Evaluate the design, and hand the result to the viewer whenever one exists.
+  // Evaluate the design, and hand the result to the viewer whenever one exists. Runs once
+  // per source, not once per scroll: the result is kept in modelRef and replayed by the
+  // effect above every time a viewer is built.
   useEffect(() => {
     let cancelled = false;
 
@@ -125,22 +138,26 @@ function Canvas({code, height}: CanvasProps): ReactNode {
         if (cancelled) return;
 
         modelRef.current = {geometries, bounds};
-        setError(null);
+        setDesignError(null);
         viewerRef.current?.setGeometries(geometries, bounds);
       } catch (cause) {
         if (cancelled) return;
-        setError(cause instanceof Error ? cause.message : String(cause));
+        setDesignError(cause instanceof Error ? cause.message : String(cause));
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [code, visible]);
+  }, [code]);
 
   const handlePointerDown = useCallback((event: React.PointerEvent) => {
     const viewer = viewerRef.current;
     if (!viewer) return;
+    // The overlay controls are inside the viewport, and this handler is on the viewport
+    // rather than on the canvas. Capturing the pointer for a drag would retarget the
+    // click away from the button that was pressed, so leave those presses alone.
+    if ((event.target as Element).closest('button')) return;
 
     setEngaged(true);
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -175,25 +192,29 @@ function Canvas({code, height}: CanvasProps): ReactNode {
   // the viewer never hijacks the page. Registered natively because React attaches wheel
   // listeners passively, which forbids preventDefault.
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !engaged) return;
+    const container = containerRef.current;
+    if (!container || !engaged) return;
 
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
       viewerRef.current?.zoom(wheelSteps(event));
     };
-    canvas.addEventListener('wheel', onWheel, {passive: false});
-    return () => canvas.removeEventListener('wheel', onWheel);
+    container.addEventListener('wheel', onWheel, {passive: false});
+    return () => container.removeEventListener('wheel', onWheel);
   }, [engaged]);
 
   return (
-    <div className={styles.viewport} ref={containerRef} style={{height}}>
-      <canvas
-        ref={canvasRef}
-        className={styles.canvas}
-        onPointerDown={handlePointerDown}
-        onPointerLeave={() => setEngaged(false)}
-      />
+    <div
+      className={styles.viewport}
+      ref={containerRef}
+      style={{height}}
+      onPointerDown={handlePointerDown}
+      onPointerLeave={() => setEngaged(false)}>
+      {/*
+        Left empty for the viewer to fill: it appends and removes its own canvas, so React
+        must have no children here to reconcile against.
+      */}
+      <div className={styles.canvasHost} ref={hostRef} />
 
       {error ? (
         <div className={styles.error} role="alert">

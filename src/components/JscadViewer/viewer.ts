@@ -1,6 +1,6 @@
 /**
- * A small wrapper around @jscad/regl-renderer: turns a canvas plus a list of
- * geometries into an orbitable 3D view.
+ * A small wrapper around @jscad/regl-renderer: fills a host element with an orbitable
+ * 3D view of a list of geometries.
  *
  * Camera and control state live outside the WebGL lifecycle so the context can be
  * released when the viewer scrolls off screen and restored, framed as the reader left
@@ -14,6 +14,7 @@ import {
   controls,
   entitiesFromSolids,
   prepareRender,
+  type DrawCommandFactory,
 } from '@jscad/regl-renderer';
 
 const perspectiveCamera = cameras.perspective;
@@ -90,17 +91,59 @@ export type Viewer = {
   dispose: () => void;
 };
 
+export type ViewerOptions = {
+  /**
+   * Called when the browser drops the context on its own — a GPU reset, or one viewer too
+   * many on a long page. The caller is expected to throw this viewer away and build a
+   * fresh one; a lost context can never be revived in place.
+   */
+  onContextLost?: () => void;
+  /** Reports a failure from inside the animation frame, where nothing else can catch it. */
+  onError?: (message: string) => void;
+};
+
+/**
+ * Builds each draw command once per entity instead of once per frame.
+ *
+ * The renderer has its own cache, but it misses forever on its first entry: it keys
+ * entries by the cache's size and then tests that key for truthiness, so id 0 always
+ * reads as a miss. Entity 0 is the grid, which therefore had its shaders recompiled and
+ * its buffers reallocated on every frame — and since the grid picks `polygonOffset.units`
+ * with `Math.random()` at build time, its depth bias flickered along with it.
+ *
+ * Keyed on the entity rather than on its `visuals.cacheId`: `setGeometries` builds fresh
+ * entities whenever the geometry changes, so changed geometry still gets a fresh command.
+ * A WeakMap, so the commands for replaced entities become collectable.
+ */
+const memoizePerEntity = (make: DrawCommandFactory): DrawCommandFactory => {
+  const cache = new WeakMap<object, unknown>();
+  return (regl, entity) => {
+    if (!cache.has(entity)) cache.set(entity, make(regl, entity));
+    return cache.get(entity);
+  };
+};
+
 export const createViewer = (
-  canvas: HTMLCanvasElement,
+  host: HTMLElement,
   state: ViewerState,
   theme: ViewerTheme,
+  {onContextLost, onError}: ViewerOptions = {},
 ): Viewer => {
+  // The viewer owns its canvas so that the element's lifetime matches the context's.
+  // Reusing an element is not an option: a canvas may only ever hand out one WebGL
+  // context, and `getContext` keeps returning that same object after it has been lost.
+  const canvas = document.createElement('canvas');
+  host.append(canvas);
+
   const gl = canvas.getContext('webgl', {
     alpha: true,
     antialias: true,
     preserveDrawingBuffer: false,
   });
-  if (!gl) throw new Error('WebGL is not available in this browser.');
+  if (!gl || gl.isContextLost()) {
+    canvas.remove();
+    throw new Error('WebGL is not available in this browser.');
+  }
 
   let entities: unknown[] = [];
   /** Just the model, without the grid and axis helpers, which carry no geometry. */
@@ -111,11 +154,14 @@ export const createViewer = (
   const renderOptions = {
     glOptions: {gl},
     camera: state.camera,
+    // Memoized per viewer, never at module scope: every command bakes in buffers and a
+    // compiled program belonging to this one regl instance, so none of them may be shared
+    // with another viewer.
     drawCommands: {
-      drawAxis: commands.drawAxis,
-      drawGrid: commands.drawGrid,
-      drawLines: commands.drawLines,
-      drawMesh: commands.drawMesh,
+      drawAxis: memoizePerEntity(commands.drawAxis),
+      drawGrid: memoizePerEntity(commands.drawGrid),
+      drawLines: memoizePerEntity(commands.drawLines),
+      drawMesh: memoizePerEntity(commands.drawMesh),
     },
     rendering: {
       background: theme.background,
@@ -157,7 +203,15 @@ export const createViewer = (
 
     renderOptions.camera = state.camera;
     renderOptions.entities = entities;
-    render(renderOptions);
+    // Nothing else can catch a throw from here: an animation frame runs outside every
+    // call stack the component owns, so without this the view just stops drawing and
+    // leaves an empty box behind its own controls.
+    try {
+      render(renderOptions);
+    } catch (cause) {
+      onError?.(cause instanceof Error ? cause.message : String(cause));
+      return;
+    }
 
     if (updated.controls.changed) requestFrame();
   };
@@ -227,12 +281,23 @@ export const createViewer = (
     zoomToFit();
   };
 
+  // A context the browser drops on its own cannot be revived here, so ask to be rebuilt
+  // from scratch. Guarded by `disposed` because our own teardown fires this event too.
+  canvas.addEventListener('webglcontextlost', (event) => {
+    // Without preventDefault the browser will never offer to restore the context.
+    event.preventDefault();
+    if (!disposed) onContextLost?.();
+  });
+
   const dispose = () => {
     disposed = true;
     if (frame) cancelAnimationFrame(frame);
     // regl offers no teardown here, so drop the context explicitly to stay well
     // under the browser's limit on simultaneous WebGL contexts.
     gl.getExtension('WEBGL_lose_context')?.loseContext();
+    // Taking the element with it: a canvas can never hand out a second context, so
+    // leaving this one behind would poison the next viewer built in its place.
+    canvas.remove();
   };
 
   const applyControlUpdate = (updated: {

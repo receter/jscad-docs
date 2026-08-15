@@ -21,18 +21,25 @@
   border: 1px solid var(--ifm-color-emphasis-300);
   border-radius: 0 0 var(--ifm-code-border-radius) var(--ifm-code-border-radius);
   background: var(--ifm-background-surface-color);
-}
-
-.canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
+  /* Drags are read here rather than on the canvas, which the viewer owns and replaces. */
   cursor: grab;
   touch-action: pan-y;
 }
 
-.canvas:active {
+.viewport:active {
   cursor: grabbing;
+}
+
+/* Filled by the viewer with a canvas of its own making. */
+.canvasHost {
+  position: absolute;
+  inset: 0;
+}
+
+.canvasHost canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .hint,
@@ -71,6 +78,8 @@
 .error {
   position: absolute;
   inset: 0;
+  /* Covers the viewport, so it must not keep offering the grab cursor. */
+  cursor: default;
   display: flex;
   flex-direction: column;
   justify-content: center;

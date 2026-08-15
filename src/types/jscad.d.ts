@@ -33,11 +33,18 @@ declare module '@jscad/regl-renderer' {
     camera: Record<string, unknown>;
   };
 
+  /**
+   * Builds a regl draw command for one entity. Geometry, shaders and buffers are all
+   * baked in at build time, so the result belongs to both that entity and the regl
+   * instance it was built with, and may be reused for neither another.
+   */
+  export type DrawCommandFactory = (regl: unknown, entity: object) => unknown;
+
   export const commands: {
-    drawAxis: unknown;
-    drawGrid: unknown;
-    drawLines: unknown;
-    drawMesh: unknown;
+    drawAxis: DrawCommandFactory;
+    drawGrid: DrawCommandFactory;
+    drawLines: DrawCommandFactory;
+    drawMesh: DrawCommandFactory;
   };
 
   export const controls: {
