@@ -1,6 +1,6 @@
 ---
 title: Transforms
-sidebar_position: 7
+sidebar_position: 8
 ---
 
 # Transforms
@@ -64,7 +64,9 @@ and these positive rotations:
 - from positive Z to positive X, about the Y axis
 
 It takes a little while to internalise, and is easiest to learn by rotating a shape
-by both positive and negative angles and watching what happens.
+by both positive and negative angles and watching what happens. The
+[Math Guide](../math-guide.md#orientation) shows the axes and rotations as models you
+can turn.
 
 ## Translate
 

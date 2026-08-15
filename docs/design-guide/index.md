@@ -40,9 +40,13 @@ export const main = () => {
 | [Projects](./projects.md) | Splitting a design across several files |
 | [3D Primitives](./3d-primitives.md) | Cuboids, spheres, cylinders, tori, polyhedra |
 | [2D Primitives](./2d-primitives.md) | Rectangles, ellipses, polygons, stars |
+| [Paths and Text](./paths-and-text.md) | Lines, curves, and text as geometry |
 | [Transforms](./transforms.md) | Moving, rotating, scaling and aligning shapes |
 | [Operations](./operations.md) | Combining shapes with booleans and hulls |
 | [Extrusions](./extrusions.md) | Turning 2D shapes into 3D ones |
+| [Offsets](./offsets.md) | Growing and shrinking shapes by a fixed distance |
+| [Colors](./colors.md) | Applying color, and converting between color spaces |
+| [Measurements](./measurements.md) | Asking a shape about its size and position |
 
 ## Importing the modeling library
 
